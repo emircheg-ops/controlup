@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jet2holidays seat selection – lo-fi prototype</title>
+<style>
+:root{--bg:#fff;--ink:#222;--line:#888;--fill:#e2e2e2;--soft:#f3f3f3;--sel:#c9dcf3;--acc:#3d8ede;--accink:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1b;--ink:#eee;--line:#9a9a9a;--fill:#363636;--soft:#262626;--sel:#2b4766;--acc:#5aa2ee;--accink:#10151b}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:2px dashed var(--line);background:var(--soft)}
+.logo{border:2px dashed var(--line);padding:4px 10px;font-weight:700}
+main{max-width:1040px;margin:0 auto;padding:16px}
+.screen{display:none}.screen.on{display:block}
+h1{font-size:21px;margin:4px 0 12px}h2{font-size:16px;margin:0 0 8px}
+.box{border:2px dashed var(--line);background:var(--soft);padding:12px}
+.grid{display:grid;grid-template-columns:270px 1fr 280px;gap:14px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:700px){.two{grid-template-columns:1fr}}
+button{font:inherit;color:var(--ink);cursor:pointer}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.btn{padding:9px 16px;border:2px solid var(--line);background:var(--bg)}
+.btn.p{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.tabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}.tabs .btn[aria-pressed=true]{background:var(--sel);font-weight:700}
+.pax{display:block;width:100%;text-align:left;padding:8px;margin-bottom:8px;border:2px solid var(--line);background:var(--bg)}
+.pax[aria-pressed=true]{background:var(--sel);font-weight:600}
+.pax small{display:block;font-weight:400}
+.sec{display:grid;gap:5px;justify-content:center;margin:6px 0;overflow-x:auto}
+.row{display:flex;gap:5px;align-items:center}.rn{width:22px;text-align:center;font-size:12px}.gap{width:18px}
+.seat{width:42px;height:38px;border:2px solid var(--line);background:var(--bg);font-size:11px;padding:0}
+.seat.xl{border-width:3px}.seat.premium{border-style:double;border-width:4px}
+.seat.na{background:var(--fill);color:var(--line);cursor:not-allowed}
+.seat.mine{background:var(--sel);font-weight:700}.seat.other{background:var(--fill);border-style:dotted}
+.exit{display:flex;justify-content:space-between;font-size:12px;margin:8px 0}
+#msg{min-height:1.5em;font-weight:600;color:#b3261e}
+@media (prefers-color-scheme:dark){#msg{color:#ff8a80}}
+table{width:100%;border-collapse:collapse}td{padding:4px 0;vertical-align:top}td:last-child{text-align:right;white-space:nowrap}
+.tot{font-size:22px;font-weight:700;margin-top:8px}
+ul.k{margin:0;padding-left:18px}ul.i{list-style:none;padding:0;margin:0 0 8px}ul.i li{padding:2px 0}
+.note{font-size:12px;opacity:.8;margin-top:6px}
+.hr{border:0;border-top:2px dashed var(--line);margin:10px 0}
+</style></head><body>
+<header><span class="logo">[ Jet2holidays logo placeholder ]</span><span>Manage My Booking · 0333 014 0236</span></header>
+<main>
+
+<!-- SCREEN 1: booking overview -->
+<section class="screen on" id="s1">
+ <h1>Manage my booking</h1>
+ <div class="two">
+  <div class="box"><h2>Your holiday</h2>
+   <ul class="i"><li>2 Adults</li><li><b>Fri 19 Feb 2027, 7 nights</b></li><li>London Gatwick → Phuket</li><li>Phuket → London Gatwick</li>
+   <li>Hand luggage included · 2x 25kg check-in luggage</li><li>Meals included · Bed &amp; Breakfast · 1x Double Room</li><li>Overseas coach transfer</li></ul>
+   <hr class="hr"><div id="s1total"></div></div>
+  <div class="box"><h2>Add holiday essentials</h2>
+   <p><b>Choose your seats</b><br>Sit together or pick extra space. Optional: you can skip this step.</p>
+   <button class="btn p" id="go2">Choose seats</button>
+   <p class="note">Other essentials (insurance, car hire, airport parking) are out of scope.</p></div>
+ </div>
+</section>
+
+<!-- SCREEN 2: seat map -->
+<section class="screen" id="s2">
+ <h1 id="s2title">Select your seat</h1>
+ <div class="grid">
+  <aside class="box">
+   <h2>Key to seats</h2>
+   <ul class="k"><li>Standard from £24.50</li><li>Extra space (XL) from £94 (thick border)</li><li>Premium from £500 (double border)</li><li>Unavailable (grey, ×)</li><li>Taken by another passenger (dotted)</li></ul>
+   <h2 style="margin-top:14px">Passengers</h2><div id="pax"></div>
+  </aside>
+  <div class="box">
+   <div class="tabs"><button class="btn" id="tOut">Outbound: London Gatwick – Phuket</button><button class="btn" id="tRet">Return: Phuket – London Gatwick</button></div>
+   <div id="msg" role="status" aria-live="polite"></div>
+   <div id="front" class="sec"></div>
+   <div class="exit"><span>← EXIT</span><span>EXIT →</span></div>
+   <div id="rear" class="sec"></div>
+  </div>
+  <aside class="box"><h2>Seat summary</h2><table id="sum"></table><div class="tot" id="seatTot"></div>
+   <p class="note">Prices include mandatory fees &amp; taxes.</p></aside>
+ </div>
+ <p style="display:flex;justify-content:space-between;margin-top:14px;gap:8px;flex-wrap:wrap">
+  <button class="btn" id="cancel">Cancel and return</button>
+  <span><button class="btn" id="skip">Skip seats</button> <button class="btn p" id="next">Next flight</button></span></p>
+</section>
+
+<!-- SCREEN 3: updated summary -->
+<section class="screen" id="s3">
+ <h1>Booking summary updated</h1>
+ <div class="two">
+  <div class="box"><h2>Your holiday</h2>
+   <ul class="i"><li>2 Adults · <b>Fri 19 Feb 2027, 7 nights</b></li><li>London Gatwick → Phuket · Phuket → London Gatwick</li><li>2x 25kg check-in · Bed &amp; Breakfast · 1x Double Room</li></ul>
+   <hr class="hr"><h2>Seats</h2><table id="s3seats"></table><hr class="hr">
+   <table><tr><td>Holiday price</td><td id="s3base"></td></tr><tr><td>Seats</td><td id="s3add"></td></tr></table>
+   <div class="tot" id="s3total"></div><p class="note">Incl. mandatory fees &amp; taxes.</p></div>
+  <div class="box"><h2>What next?</h2>
+   <p>Changed your mind? You can edit seats again before paying.</p>
+   <p><button class="btn" id="edit">Change seats</button> <button class="btn p" id="pay">Continue to payment</button></p>
+   <p class="note" id="payNote"></p></div>
+ </div>
+</section>
+</main>
+<script>
+// Lo-fi demo; rules mirror BR-01..BR-09 in docs/BRD.md
+const BASE=4857.60, PX=[{id:'a1',n:'Adult 1'},{id:'a2',n:'Adult 2'}];
+const FRONT={cols:['A','C','D','E','F','G','J'],rows:[1,2,3,4,5,6,7],gaps:[2,5]};
+const REAR={cols:['A','B','C','D','E','F','G','H','J'],rows:[10,11,12,13,14],gaps:[3,6]};
+const AV={'4F':'premium','6F':'premium','10C':'xl','10D':'xl','11C':'std','11F':'std','11G':'std','12E':'std','12F':'std','12G':'std','13C':'std','13D':'std','13E':'std','14C':'std','14D':'std','14E':'std','14F':'std','14G':'std'};
+const PRICE={std:24.5,xl:94,premium:500};
+const sel={out:{},ret:{}};let fl='out',act='a1';
+const $=s=>document.querySelector(s),gbp=n=>'£'+n.toFixed(2),FN={out:'Outbound',ret:'Return'};
+const say=t=>$('#msg').textContent=t;
+const total=()=>Object.values(sel).reduce((a,f)=>a+Object.values(f).reduce((b,s)=>b+PRICE[AV[s]],0),0);
+const show=id=>{document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));window.scrollTo(0,0)};
+
+function pick(id){
+  if(!AV[id]){say('Seat '+id+' is unavailable. Choose another seat.');return}                       // BR-03
+  const h=Object.keys(sel[fl]).find(p=>sel[fl][p]===id);
+  if(h&&h!==act){say('Seat '+id+' is already assigned to '+PX.find(p=>p.id===h).n+'.');return}      // BR-02
+  if(h===act){delete sel[fl][act];say('Seat '+id+' removed.')}                                       // BR-07
+  else{const old=sel[fl][act];sel[fl][act]=id;say(old?'Changed '+old+' to '+id+'.':'')}              // BR-01/04
+  render()}
+
+function section(el,cfg){
+  el.innerHTML='';
+  cfg.rows.forEach(r=>{const row=document.createElement('div');row.className='row';
+    row.insertAdjacentHTML('beforeend','<span class="rn">'+r+'</span>');
+    cfg.cols.forEach((c,i)=>{if(cfg.gaps.includes(i))row.insertAdjacentHTML('beforeend','<span class="gap"></span>');
+      const id=r+c,t=AV[id],b=document.createElement('button');
+      const mine=sel[fl][act]===id,other=!mine&&Object.values(sel[fl]).includes(id);
+      b.className='seat '+(t||'na')+(mine?' mine':'')+(other?' other':'');
+      b.textContent=!t?'×':mine?'✓ '+id:gbp(PRICE[t]).replace('.00','');
+      b.setAttribute('aria-label','Seat '+id+(!t?', unavailable':', '+gbp(PRICE[t])+(mine?', selected':other?', taken':'')));
+      b.onclick=()=>pick(id);row.append(b)});el.append(row)})}
+
+function lines(){return ['out','ret'].flatMap(f=>PX.map(p=>({f,p,s:sel[f][p.id]})))}
+function render(){
+  $('#tOut').setAttribute('aria-pressed',fl==='out');$('#tRet').setAttribute('aria-pressed',fl==='ret');
+  $('#s2title').textContent='Select your seat';
+  $('#pax').innerHTML='';
+  PX.forEach(p=>{const b=document.createElement('button');b.className='pax';b.setAttribute('aria-pressed',p.id===act);
+    b.innerHTML=p.n+'<small>'+(sel[fl][p.id]?'Seat '+sel[fl][p.id]:'No seat selected yet')+'</small>';
+    b.onclick=()=>{act=p.id;say('');render()};$('#pax').append(b)});
+  section($('#front'),FRONT);section($('#rear'),REAR);
+  $('#sum').innerHTML=lines().map(l=>'<tr><td>'+FN[l.f]+' · '+l.p.n+'<br><small>'+(l.s?'Seat '+l.s:'No seat selected yet')+'</small></td><td>'+gbp(l.s?PRICE[AV[l.s]]:0)+'</td></tr>').join('');
+  $('#seatTot').textContent='Total '+gbp(total());
+  $('#next').textContent=fl==='out'?'Next flight':'Review summary';
+  $('#s1total').innerHTML='<b>£2,428.80 pp</b><br>'+gbp(BASE)+' total'+(total()?'<br>+ '+gbp(total())+' seats = <b>'+gbp(BASE+total())+'</b>':'');
+}
+function summary(){
+  $('#s3seats').innerHTML=lines().map(l=>'<tr><td>'+FN[l.f]+' · '+l.p.n+': '+(l.s?'Seat '+l.s:'No seat selected')+'</td><td>'+gbp(l.s?PRICE[AV[l.s]]:0)+'</td></tr>').join('');
+  $('#s3base').textContent=gbp(BASE);$('#s3add').textContent=gbp(total());$('#s3total').textContent='Total '+gbp(BASE+total());render();show('s3')}
+
+$('#go2').onclick=()=>{fl='out';act='a1';say('');render();show('s2')};
+$('#tOut').onclick=()=>{fl='out';say('');render()};$('#tRet').onclick=()=>{fl='ret';say('');render()};
+$('#next').onclick=()=>{if(fl==='out'){fl='ret';act='a1';say('');render();window.scrollTo(0,0)}else summary()};
+$('#skip').onclick=()=>{sel.out={};sel.ret={};summary()};
+$('#cancel').onclick=()=>{render();show('s1')};
+$('#edit').onclick=()=>{fl='out';render();show('s2')};
+$('#pay').onclick=()=>{$('#payNote').textContent='Prototype ends here: payment is out of scope.'};
+render();
+</script></body></html>

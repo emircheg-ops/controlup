@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seat map – low-fidelity prototype</title>
+<style>
+:root{--bg:#fff;--ink:#222;--line:#888;--fill:#e6e6e6;--sel:#bcd;--bg2:#f4f4f4}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b1b;--ink:#eee;--line:#999;--fill:#333;--sel:#456;--bg2:#262626}}
+*{box-sizing:border-box}body{font:15px/1.4 system-ui,sans-serif;margin:0;padding:16px;background:var(--bg);color:var(--ink)}
+.wrap{display:grid;grid-template-columns:260px 1fr 260px;gap:16px;max-width:1000px;margin:auto}
+@media(max-width:800px){.wrap{grid-template-columns:1fr}}
+.box{border:2px dashed var(--line);padding:12px;background:var(--bg2)}
+h1{font-size:20px}h2{font-size:16px;margin:0 0 8px}
+.pax{display:block;width:100%;text-align:left;margin:0 0 8px;padding:8px;border:2px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.pax[aria-pressed=true]{background:var(--sel);font-weight:600}
+.map{display:grid;gap:6px;justify-content:center;overflow-x:auto}.row{display:flex;gap:6px;align-items:center}
+.rn{width:24px;text-align:center}.gap{width:20px}
+.seat{width:44px;height:40px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font-size:11px;cursor:pointer}
+.seat.premium{border-style:double;border-width:4px}.seat.xl{border-width:3px}
+.seat.na{background:var(--fill);color:var(--line);cursor:not-allowed}
+.seat.mine{background:var(--sel);font-weight:700}.seat.other{background:var(--fill);border-style:dotted}
+button:focus-visible{outline:3px solid #06f;outline-offset:2px}
+#msg{min-height:1.4em;color:#b00;font-weight:600}
+.nav{display:flex;gap:8px;margin-bottom:12px}.nav button{padding:6px 10px}
+table{width:100%;border-collapse:collapse}td{padding:4px 0}td:last-child{text-align:right}
+.total{font-size:22px;font-weight:700;margin-top:8px}
+ul.key{padding-left:18px;margin:0}
+</style></head><body>
+<h1>Select your seat (lo-fi prototype)</h1>
+<div class="wrap">
+ <aside class="box">
+  <h2>Key to seats</h2>
+  <ul class="key"><li>Standard £24.50</li><li>Extra legroom £80</li><li>XL £94</li><li>Premium £500 (double border)</li><li>Unavailable (× grey)</li><li>Taken by another passenger (dotted)</li></ul>
+  <h2 style="margin-top:14px">Passengers</h2>
+  <div id="pax"></div>
+ </aside>
+ <main class="box">
+  <div class="nav"><button id="tOut">Outbound: LGW–HKT</button><button id="tRet">Return: HKT–LGW</button></div>
+  <div id="msg" role="status" aria-live="polite"></div>
+  <div id="map" class="map"></div>
+ </main>
+ <aside class="box"><h2>Summary</h2><div>2 Adults · 7 nights</div><table id="sum"></table>
+  <div class="total" id="total"></div><small>Incl. mandatory fees &amp; taxes.</small></aside>
+</div>
+<script>
+// Lo-fi demo logic mirrors src/seatmap.js (BR-01..BR-09)
+const P={standard:24.5,legroom:80,xl:94,premium:500};
+const cols=['A','C','D','E','F','G','J'], rows=[1,2,4,6,10,11,12,13,14];
+const NA=['1A','1C','2A','10A','12C','11A','2C'], PREM=['4F','6F'], XL=['10C','10D'];
+const tier=id=>PREM.includes(id)?'premium':XL.includes(id)?'xl':'standard';
+const pax=[{id:'a1',n:'Adult 1'},{id:'a2',n:'Adult 2'}];
+const sel={out:{},ret:{}};let flight='out',active='a1';
+const $=s=>document.querySelector(s),gbp=n=>'£'+n.toFixed(2);
+function msg(t){$('#msg').textContent=t}
+function pick(id){
+  if(NA.includes(id)){msg('Seat '+id+' is unavailable. Choose another seat.');return}
+  const holder=Object.keys(sel[flight]).find(p=>sel[flight][p]===id);
+  if(holder&&holder!==active){msg('Seat '+id+' is already assigned to '+pax.find(p=>p.id===holder).n+'.');return}
+  if(holder===active){delete sel[flight][active];msg('Seat '+id+' removed.')}else{sel[flight][active]=id;msg('')}
+  render()}
+function render(){
+  $('#tOut').style.fontWeight=flight==='out'?700:400;$('#tRet').style.fontWeight=flight==='ret'?700:400;
+  $('#pax').innerHTML='';
+  pax.forEach(p=>{const b=document.createElement('button');b.className='pax';b.setAttribute('aria-pressed',p.id===active);
+    b.textContent=p.n+' – '+(sel[flight][p.id]?'Seat '+sel[flight][p.id]:'No seat selected yet');
+    b.onclick=()=>{active=p.id;msg('');render()};$('#pax').append(b)});
+  $('#map').innerHTML='';
+  rows.forEach(r=>{const row=document.createElement('div');row.className='row';
+    row.insertAdjacentHTML('beforeend','<span class="rn">'+r+'</span>');
+    cols.forEach((c,i)=>{if(i===2||i===5)row.insertAdjacentHTML('beforeend','<span class="gap"></span>');
+      const id=r+c,b=document.createElement('button');const mine=sel[flight][active]===id;
+      const other=!mine&&Object.values(sel[flight]).includes(id);
+      b.className='seat '+tier(id)+(NA.includes(id)?' na':'')+(mine?' mine':'')+(other?' other':'');
+      b.textContent=NA.includes(id)?'×':mine?'✓ '+id:gbp(P[tier(id)]).replace('.00','');
+      b.setAttribute('aria-label','Seat '+id+(NA.includes(id)?', unavailable':', '+gbp(P[tier(id)])+(mine?', selected':other?', taken':'')));
+      b.onclick=()=>pick(id);row.append(b)});$('#map').append(row)});
+  let t=0,h='';
+  [['out','Outbound'],['ret','Return']].forEach(([f,l])=>pax.forEach(p=>{const s=sel[f][p.id];const pr=s?P[tier(s)]:0;t+=pr;
+    h+='<tr><td>'+l+' · '+p.n+'<br><small>'+(s?'Seat '+s:'No seat selected yet')+'</small></td><td>'+gbp(pr)+'</td></tr>'}));
+  $('#sum').innerHTML=h;$('#total').textContent='Total '+gbp(t)}
+$('#tOut').onclick=()=>{flight='out';msg('');render()};$('#tRet').onclick=()=>{flight='ret';msg('');render()};
+render();
+</script></body></html>
